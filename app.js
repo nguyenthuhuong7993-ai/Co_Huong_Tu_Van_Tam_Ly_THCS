@@ -1,1022 +1,1105 @@
-import React, { useState, useEffect, useRef } from "react";
-import "./App.css";
-
-/*
-=========================================================
-   TRỢ LÝ AI TƯ VẤN TÂM LÝ HỌC ĐƯỜNG
-   PHIÊN BẢN SCHOOL COUNSELOR AI
-=========================================================
-
-   MỤC ĐÍCH:
-   - Hỗ trợ học sinh THCS chia sẻ vấn đề
-   - Phân loại chủ đề
-   - Nhận diện mức độ nguy cơ
-   - Đưa ra phản hồi đồng cảm
-   - Gợi ý kỹ năng phù hợp
-   - Kết nối giáo viên tư vấn
-
-   LƯU Ý:
-   Đây không phải công cụ chẩn đoán bệnh tâm thần.
-=========================================================
-*/
+// ============================================================
+// CHATBOT AI TƯ VẤN TÂM LÝ HỌC ĐƯỜNG
+// FILE: app.js
+// ============================================================
 
 
-/* ======================================================
-   1. THÔNG TIN GIÁO VIÊN TƯ VẤN
-====================================================== */
+// ============================================================
+// 1. LẤY CÁC PHẦN TỬ TRÊN GIAO DIỆN
+// ============================================================
+
+const chatBox = document.getElementById("chatBox");
+
+const messageInput =
+    document.getElementById("messageInput") ||
+    document.getElementById("chatInput");
+
+const sendButton =
+    document.getElementById("sendButton") ||
+    document.getElementById("sendBtn");
+
+const suggestionButtons =
+    document.querySelectorAll(".suggestion-btn, .suggestion");
+
+
+// ============================================================
+// 2. THÔNG TIN GIÁO VIÊN TƯ VẤN
+// ============================================================
 
 const COUNSELOR = {
-  name: "Giáo viên tư vấn tâm lý học đường",
-  school: "Trường THCS",
-  phone: "",
-  email: "",
-  workingTime: "7:00 - 22:00",
+    name: "Cô Nguyễn Thị Thu Hường",
+    school: "Trường THCS Phụng Công",
+    hours: "7h00 – 22h00",
+
+    // Bạn có thể điền số điện thoại của giáo viên tại đây.
+    // Không muốn hiện số điện thoại thì để trống.
+    phone: "0989836893"
 };
 
 
-/* ======================================================
-   2. CÁC CHỦ ĐỀ TƯ VẤN
-====================================================== */
+// ============================================================
+// 3. BIẾN LƯU LỊCH SỬ TRÒ CHUYỆN
+// ============================================================
 
-const TOPICS = {
-  emotion: {
-    name: "Cảm xúc",
-    icon: "😟",
-    keywords: [
-      "buồn",
-      "lo",
-      "lo lắng",
-      "sợ",
-      "tức giận",
-      "cô đơn",
-      "tự ti",
-      "khóc",
-      "stress",
-      "áp lực",
-      "mệt mỏi",
-      "chán",
-      "căng thẳng",
-    ],
-  },
+let conversationHistory = [];
 
-  study: {
-    name: "Học tập",
-    icon: "📚",
-    keywords: [
-      "học",
-      "điểm",
-      "thi",
-      "kiểm tra",
-      "bài tập",
-      "mất tập trung",
-      "không muốn học",
-      "điểm kém",
-      "áp lực học",
-      "thành tích",
-    ],
-  },
-
-  friendship: {
-    name: "Bạn bè",
-    icon: "👥",
-    keywords: [
-      "bạn",
-      "bạn bè",
-      "cãi nhau",
-      "hiểu lầm",
-      "cô lập",
-      "không có bạn",
-      "nói xấu",
-      "ghét",
-      "bỏ rơi",
-    ],
-  },
-
-  family: {
-    name: "Gia đình",
-    icon: "🏠",
-    keywords: [
-      "bố",
-      "ba",
-      "mẹ",
-      "gia đình",
-      "cha mẹ",
-      "bố mẹ",
-      "anh",
-      "chị",
-      "em",
-      "người thân",
-      "cãi nhau với bố mẹ",
-    ],
-  },
-
-  love: {
-    name: "Tình cảm",
-    icon: "💕",
-    keywords: [
-      "thích",
-      "yêu",
-      "crush",
-      "người yêu",
-      "chia tay",
-      "tình cảm",
-      "ghen",
-      "thích bạn",
-    ],
-  },
-
-  bullying: {
-    name: "Bắt nạt học đường",
-    icon: "🛡️",
-    keywords: [
-      "bắt nạt",
-      "đánh",
-      "đe dọa",
-      "chửi",
-      "làm nhục",
-      "cô lập",
-      "ức hiếp",
-      "đánh nhau",
-      "bắt nạt trên mạng",
-      "cyberbullying",
-    ],
-  },
-
-  socialMedia: {
-    name: "Mạng xã hội",
-    icon: "📱",
-    keywords: [
-      "facebook",
-      "tiktok",
-      "zalo",
-      "instagram",
-      "mạng xã hội",
-      "điện thoại",
-      "game",
-      "chơi game",
-      "tin nhắn",
-      "bình luận",
-    ],
-  },
-
-  lifeSkill: {
-    name: "Kỹ năng sống",
-    icon: "🌱",
-    keywords: [
-      "giao tiếp",
-      "tự tin",
-      "từ chối",
-      "quản lý thời gian",
-      "quản lý cảm xúc",
-      "mục tiêu",
-      "giải quyết vấn đề",
-    ],
-  },
-};
+let isWaitingForAI = false;
 
 
-/* ======================================================
-   3. NHẬN DIỆN NGUY CƠ CAO
-====================================================== */
+// ============================================================
+// 4. HÀM THÊM TIN NHẮN VÀO KHUNG CHAT
+// ============================================================
 
-const HIGH_RISK_KEYWORDS = [
-  "muốn chết",
-  "muốn tự tử",
-  "tự tử",
-  "giết mình",
-  "kết thúc cuộc đời",
-  "không muốn sống",
-  "muốn biến mất mãi mãi",
-  "tự làm đau",
-  "tự làm hại",
-  "cắt tay",
-  "tự sát",
-  "sắp tự tử",
-  "chuẩn bị tự tử",
-  "muốn chết đi",
-  "không muốn tồn tại",
-  "đang bị đánh",
-  "đang bị bạo hành",
-  "bị xâm hại",
-  "bị cưỡng ép",
-  "đang bị đe dọa",
-];
+function addMessage(text, sender = "bot") {
 
-
-/* ======================================================
-   4. NHẬN DIỆN MỨC ĐỘ CẦN QUAN TÂM
-====================================================== */
-
-const MEDIUM_RISK_KEYWORDS = [
-  "nhiều ngày",
-  "nhiều tuần",
-  "mất ngủ",
-  "không ngủ được",
-  "không muốn đi học",
-  "sợ đi học",
-  "không muốn gặp ai",
-  "không muốn nói chuyện",
-  "không còn hứng thú",
-  "buồn rất nhiều",
-  "khóc thường xuyên",
-  "bị cô lập",
-  "bị bắt nạt",
-  "bị đe dọa",
-  "áp lực rất lớn",
-  "quá mệt mỏi",
-];
-
-
-/* ======================================================
-   5. HÀM CHUẨN HÓA VĂN BẢN
-====================================================== */
-
-function normalizeText(text) {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .trim();
-}
-
-
-/* ======================================================
-   6. NHẬN DIỆN NGUY CƠ
-====================================================== */
-
-function detectRisk(text) {
-  const normalized = normalizeText(text);
-
-  const highRisk = HIGH_RISK_KEYWORDS.some((keyword) =>
-    normalized.includes(normalizeText(keyword))
-  );
-
-  if (highRisk) {
-    return "HIGH";
-  }
-
-  const mediumRisk = MEDIUM_RISK_KEYWORDS.some((keyword) =>
-    normalized.includes(normalizeText(keyword))
-  );
-
-  if (mediumRisk) {
-    return "MEDIUM";
-  }
-
-  return "LOW";
-}
-
-
-/* ======================================================
-   7. NHẬN DIỆN CHỦ ĐỀ
-====================================================== */
-
-function detectTopic(text) {
-  const normalized = normalizeText(text);
-
-  let bestTopic = null;
-  let highestScore = 0;
-
-  Object.entries(TOPICS).forEach(([key, topic]) => {
-    let score = 0;
-
-    topic.keywords.forEach((keyword) => {
-      if (normalized.includes(normalizeText(keyword))) {
-        score++;
-      }
-    });
-
-    if (score > highestScore) {
-      highestScore = score;
-      bestTopic = key;
+    if (!chatBox) {
+        console.error("Không tìm thấy #chatBox");
+        return;
     }
-  });
 
-  return bestTopic || "emotion";
+    const messageElement = document.createElement("div");
+
+    messageElement.className =
+        sender === "user"
+            ? "message user-message"
+            : "message bot-message";
+
+    messageElement.innerHTML = formatMessage(text);
+
+    chatBox.appendChild(messageElement);
+
+    scrollToBottom();
 }
 
 
-/* ======================================================
-   8. PHẢN HỒI NGUY CƠ CAO
-====================================================== */
+// ============================================================
+// 5. ĐỊNH DẠNG NỘI DUNG CHATBOT
+// ============================================================
 
-function highRiskResponse() {
-  return {
-    type: "HIGH",
-    message: `
-🆘 CÔ MUỐN EM ƯU TIÊN AN TOÀN TRƯỚC TIÊN.
+function formatMessage(text) {
 
-Những điều em vừa chia sẻ rất quan trọng và em không nên phải đối mặt với chúng một mình.
+    if (!text) return "";
 
-Nếu em đang có nguy cơ làm tổn thương bản thân hoặc đang ở trong tình huống nguy hiểm ngay lúc này:
+    let safeText = String(text);
 
-• Hãy đến gần một người lớn mà em tin tưởng.
-• Hãy nói rõ rằng em đang cần được giúp đỡ.
-• Không ở một mình khi em cảm thấy mình có thể làm điều nguy hiểm.
-• Nếu đang ở nơi không an toàn, hãy tìm cách rời khỏi nơi đó và tìm sự hỗ trợ khẩn cấp tại địa phương.
+    // Chuyển ký tự HTML nguy hiểm thành text
+    safeText = safeText
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 
-Em có thể nói với cô giáo, cha mẹ, người thân hoặc một người lớn mà em tin tưởng:
+    // Xuống dòng
+    safeText = safeText.replace(/\n/g, "<br>");
 
-"Em đang không cảm thấy an toàn và em cần người giúp em."
+    // In đậm **text**
+    safeText = safeText.replace(
+        /\*\*(.*?)\*\*/g,
+        "<strong>$1</strong>"
+    );
 
-Cô sẽ ở đây để lắng nghe em, nhưng trong tình huống nguy hiểm, sự hỗ trợ trực tiếp của người lớn là rất quan trọng.
-`,
-  };
+    return safeText;
 }
 
 
-/* ======================================================
-   9. PHẢN HỒI MỨC ĐỘ CẦN QUAN TÂM
-====================================================== */
+// ============================================================
+// 6. CUỘN XUỐNG CUỐI KHUNG CHAT
+// ============================================================
 
-function mediumRiskResponse(topic) {
-  const topicName = TOPICS[topic]?.name || "vấn đề này";
+function scrollToBottom() {
 
-  return {
-    type: "MEDIUM",
-    message: `
-Cô nghe em và cô nghĩ rằng ${topicName.toLowerCase()} đang khiến em chịu khá nhiều áp lực.
+    if (!chatBox) return;
 
-Điều em cảm thấy là điều đáng được quan tâm, đặc biệt nếu tình trạng này kéo dài hoặc ảnh hưởng đến việc học, giấc ngủ, các mối quan hệ hoặc cuộc sống hằng ngày.
-
-Trước mắt, em có thể thử:
-
-🌱 1. Dừng lại một chút và hít thở chậm.
-🌱 2. Viết ra điều đang khiến em khó chịu nhất.
-🌱 3. Chia vấn đề thành một việc nhỏ có thể giải quyết trước.
-🌱 4. Nói chuyện với một người lớn mà em tin tưởng.
-
-Nếu em muốn, cô có thể tiếp tục cùng em tìm hiểu vấn đề này.
-
-Và em cũng có thể liên hệ trực tiếp với giáo viên tư vấn tâm lý học đường khi cần.
-`,
-  };
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 
-/* ======================================================
-   10. KIẾN THỨC TƯ VẤN THEO CHỦ ĐỀ
-====================================================== */
+// ============================================================
+// 7. HIỂN THỊ "ĐANG SUY NGHĨ..."
+// ============================================================
 
-const KNOWLEDGE = {
+function showTyping() {
 
-  emotion: {
-    opening:
-      "Cô nghe em. Có vẻ hiện tại cảm xúc của em đang khá nặng nề.",
+    if (!chatBox) return;
 
-    questions: [
-      "Điều gì khiến em cảm thấy như vậy?",
-      "Cảm xúc này bắt đầu từ khi nào?",
-      "Điều gì làm em khó chịu nhất lúc này?",
-      "Em đã từng chia sẻ chuyện này với ai chưa?",
-    ],
+    removeTyping();
 
-    advice: `
-Em có thể thử một cách rất đơn giản:
+    const typingElement =
+        document.createElement("div");
 
-1. Dừng lại vài phút.
-2. Hít vào chậm.
-3. Thở ra từ từ.
-4. Gọi tên cảm xúc của mình: "Mình đang buồn", "Mình đang lo" hoặc "Mình đang tức giận".
-5. Tự hỏi: "Điều gì nằm trong khả năng mình có thể thay đổi ngay lúc này?"
+    typingElement.id = "typingIndicator";
 
-Em không cần phải giải quyết tất cả mọi chuyện cùng một lúc.
-`,
-  },
+    typingElement.className =
+        "message bot-message typing-message";
 
+    typingElement.innerHTML =
+        "🤖 <span>Trợ lý đang suy nghĩ...</span>";
 
-  study: {
-    opening:
-      "Áp lực học tập có thể khiến chúng ta cảm thấy mệt mỏi, lo lắng hoặc mất động lực.",
+    chatBox.appendChild(typingElement);
 
-    questions: [
-      "Điều gì trong việc học đang khiến em áp lực nhất?",
-      "Em lo điểm số hay lo phản ứng của cha mẹ/thầy cô?",
-      "Môn học nào khiến em cảm thấy khó khăn nhất?",
-      "Em thường học vào thời gian nào?",
-    ],
-
-    advice: `
-Em có thể thử phương pháp "việc nhỏ trước":
-
-📚 Chọn một nhiệm vụ nhỏ.
-⏱️ Tập trung khoảng 20–25 phút.
-☕ Nghỉ vài phút.
-✅ Hoàn thành từng phần thay vì nghĩ rằng mình phải hoàn thành tất cả.
-
-Điểm số là một thông tin về kết quả học tập, không phải giá trị của một con người.
-`,
-  },
-
-
-  friendship: {
-    opening:
-      "Mối quan hệ bạn bè rất quan trọng ở lứa tuổi của em, nên mâu thuẫn với bạn có thể khiến em buồn rất nhiều.",
-
-    questions: [
-      "Chuyện giữa em và bạn bắt đầu như thế nào?",
-      "Em muốn điều gì xảy ra giữa hai bạn?",
-      "Em đã thử nói chuyện trực tiếp với bạn chưa?",
-      "Em có cảm thấy mình đang bị cô lập hoặc bị bắt nạt không?",
-    ],
-
-    advice: `
-Nếu đây chỉ là một hiểu lầm, em có thể chọn lúc cả hai bình tĩnh rồi nói:
-
-"Mình cảm thấy buồn khi chuyện đó xảy ra. Mình muốn chúng ta nói chuyện để hiểu nhau hơn."
-
-Hãy nói về cảm xúc và sự việc thay vì dùng những câu mang tính công kích như:
-"Bạn lúc nào cũng..."
-
-Nếu có hành vi bắt nạt, đe dọa hoặc bạo lực, em không cần tự giải quyết một mình.
-`,
-  },
-
-
-  family: {
-    opening:
-      "Mâu thuẫn với gia đình có thể khiến em cảm thấy rất khó chịu, nhất là khi em cảm thấy mình không được hiểu.",
-
-    questions: [
-      "Điều gì khiến em khó nói chuyện với bố mẹ?",
-      "Em mong bố mẹ hiểu điều gì về mình?",
-      "Hai bên thường tranh cãi về vấn đề gì?",
-      "Có người lớn nào trong gia đình mà em cảm thấy dễ chia sẻ hơn không?",
-    ],
-
-    advice: `
-Khi nói chuyện với cha mẹ, em có thể thử chọn thời điểm mọi người bình tĩnh.
-
-Thay vì:
-"Bố mẹ chẳng bao giờ hiểu con."
-
-Em có thể nói:
-"Con cảm thấy áp lực khi chuyện này xảy ra và con muốn bố mẹ nghe con nói trước."
-
-Không phải lúc nào hai bên cũng đồng ý với nhau ngay, nhưng cách nói bình tĩnh có thể giúp cuộc trò chuyện dễ dàng hơn.
-`,
-  },
-
-
-  love: {
-    opening:
-      "Cảm xúc thích một người là điều rất tự nhiên ở tuổi học sinh.",
-
-    questions: [
-      "Điều gì khiến em băn khoăn nhất về tình cảm này?",
-      "Em đang vui, buồn hay lo lắng?",
-      "Em có cảm thấy mình đang bị ép buộc điều gì không?",
-      "Em có đang bỏ bê việc học hoặc những hoạt động khác vì chuyện này không?",
-    ],
-
-    advice: `
-Tình cảm tuổi học trò nên đi cùng sự tôn trọng, tự nguyện và ranh giới cá nhân.
-
-Em có quyền nói "không" với điều khiến em không thoải mái.
-
-Đừng gửi hoặc chia sẻ hình ảnh riêng tư chỉ vì sợ mất một mối quan hệ.
-`,
-  },
-
-
-  bullying: {
-    opening:
-      "Nếu em đang bị bắt nạt, điều đầu tiên cô muốn em biết là em không cần phải chịu đựng một mình.",
-
-    questions: [
-      "Chuyện đó xảy ra ở đâu?",
-      "Ai đang làm điều đó?",
-      "Chuyện xảy ra một lần hay nhiều lần?",
-      "Em có cảm thấy mình đang gặp nguy hiểm không?",
-      "Có giáo viên hoặc người lớn nào đã biết chuyện chưa?",
-    ],
-
-    advice: `
-Nếu em bị bắt nạt:
-
-🛡️ Không nhất thiết phải đối đầu trực tiếp với người bắt nạt.
-🛡️ Hãy ở gần bạn bè hoặc người lớn đáng tin cậy.
-🛡️ Lưu lại thông tin liên quan nếu phù hợp và an toàn.
-🛡️ Báo với giáo viên hoặc người lớn.
-🛡️ Nếu có nguy hiểm về thể chất, ưu tiên rời khỏi nơi đó và tìm sự giúp đỡ.
-
-Bị bắt nạt không phải là lỗi của em.
-`,
-  },
-
-
-  socialMedia: {
-    opening:
-      "Mạng xã hội có thể giúp chúng ta kết nối, nhưng cũng có thể tạo ra khá nhiều áp lực.",
-
-    questions: [
-      "Điều gì trên mạng xã hội đang khiến em khó chịu?",
-      "Em sử dụng điện thoại khoảng bao lâu mỗi ngày?",
-      "Em có đang bị ai nhắn tin đe dọa hoặc xúc phạm không?",
-      "Em có cảm thấy mình phải liên tục kiểm tra điện thoại không?",
-    ],
-
-    advice: `
-Em có thể thử:
-
-📱 Đặt khoảng thời gian không sử dụng điện thoại.
-🌱 Tắt thông báo không cần thiết.
-😴 Không sử dụng điện thoại ngay trước khi ngủ.
-👥 Dành thời gian cho hoạt động ngoài đời thực.
-🛡️ Nếu bị đe dọa hoặc bắt nạt trực tuyến, hãy lưu lại thông tin và báo cho người lớn.
-`,
-  },
-
-
-  lifeSkill: {
-    opening:
-      "Cô rất vui khi em muốn tìm cách cải thiện kỹ năng của mình.",
-
-    questions: [
-      "Em muốn cải thiện kỹ năng nào nhất?",
-      "Điều gì khiến em thấy mình đang gặp khó khăn?",
-      "Em đã thử cách nào rồi?",
-    ],
-
-    advice: `
-Em không cần thay đổi tất cả cùng một lúc.
-
-Hãy chọn một việc nhỏ:
-
-🎯 Xác định mục tiêu.
-📝 Viết ra việc cần làm.
-⏱️ Chọn thời gian thực hiện.
-✅ Hoàn thành một bước nhỏ.
-🔄 Xem lại kết quả.
-
-Thay đổi nhỏ nhưng đều đặn thường dễ duy trì hơn việc đặt mục tiêu quá lớn ngay từ đầu.
-`,
-  },
-};
-
-
-/* ======================================================
-   11. TẠO CÂU TRẢ LỜI
-====================================================== */
-
-function generateResponse(userText) {
-
-  const risk = detectRisk(userText);
-
-  /* NGUY CƠ CAO */
-  if (risk === "HIGH") {
-    return highRiskResponse();
-  }
-
-  /* CHỦ ĐỀ */
-  const topic = detectTopic(userText);
-
-  /* NGUY CƠ TRUNG BÌNH */
-  if (risk === "MEDIUM") {
-    return mediumRiskResponse(topic);
-  }
-
-  const data = KNOWLEDGE[topic];
-
-  const randomQuestion =
-    data.questions[
-      Math.floor(Math.random() * data.questions.length)
-    ];
-
-  return {
-    type: "NORMAL",
-
-    message: `
-${data.opening}
-
-${data.advice}
-
-💬 Cô muốn hỏi em thêm một điều:
-
-"${randomQuestion}"
-
-Em có thể kể cho cô theo cách mà em cảm thấy thoải mái nhất.
-Không cần phải kể tất cả ngay một lúc.
-`,
-  };
+    scrollToBottom();
 }
 
 
-/* ======================================================
-   12. COMPONENT NÚT LIÊN HỆ GIÁO VIÊN
-====================================================== */
+// ============================================================
+// 8. XÓA "ĐANG SUY NGHĨ..."
+// ============================================================
 
-function CounselorCard() {
+function removeTyping() {
 
-  return (
-    <div className="counselor-card">
+    const typing =
+        document.getElementById("typingIndicator");
 
-      <div className="counselor-icon">
-        👩‍🏫
-      </div>
+    if (typing) {
+        typing.remove();
+    }
+}
 
-      <div className="counselor-content">
 
-        <strong>
-          Giáo viên tư vấn tâm lý học đường
-        </strong>
+// ============================================================
+// 9. HIỂN THỊ THÔNG TIN GIÁO VIÊN TƯ VẤN
+// ============================================================
 
-        <div>
-          {COUNSELOR.school}
+function showCounselor() {
+
+    if (!chatBox) return;
+
+    // Không tạo nhiều thẻ liên tiếp
+    const oldCard =
+        document.getElementById("counselorCard");
+
+    if (oldCard) {
+        oldCard.remove();
+    }
+
+    const card =
+        document.createElement("div");
+
+    card.id = "counselorCard";
+
+    card.className = "counselor-card";
+
+    let phoneHTML = "";
+
+    if (COUNSELOR.phone &&
+        COUNSELOR.phone.trim() !== "") {
+
+        phoneHTML = `
+            <div class="counselor-phone">
+                📞 <strong>Liên hệ:</strong>
+                ${COUNSELOR.phone}
+            </div>
+        `;
+    }
+
+    card.innerHTML = `
+        <div class="counselor-title">
+            💙 Giáo viên tư vấn tâm lý
         </div>
 
-        <div>
-          🕐 Thời gian hỗ trợ: {COUNSELOR.workingTime}
+        <div class="counselor-content">
+
+            <div>
+                👩‍🏫 <strong>${COUNSELOR.name}</strong>
+            </div>
+
+            <div>
+                🏫 ${COUNSELOR.school}
+            </div>
+
+            <div>
+                🕐 Thời gian hỗ trợ:
+                ${COUNSELOR.hours}
+            </div>
+
+            ${phoneHTML}
+
         </div>
 
-        {COUNSELOR.phone && (
-          <div>
-            📞 {COUNSELOR.phone}
-          </div>
-        )}
+        <div class="counselor-note">
+            Nếu em cảm thấy vấn đề của mình khó giải quyết
+            một mình, em có thể tìm đến cô để được lắng nghe
+            và hỗ trợ trực tiếp.
+        </div>
+    `;
 
-        {COUNSELOR.email && (
-          <div>
-            ✉️ {COUNSELOR.email}
-          </div>
-        )}
+    chatBox.appendChild(card);
 
-      </div>
-
-    </div>
-  );
+    scrollToBottom();
 }
 
 
-/* ======================================================
-   13. COMPONENT APP
-====================================================== */
+// ============================================================
+// 10. HIỂN THỊ NÚT GỢI Ý
+// ============================================================
 
-export default function App() {
+function showSuggestions() {
 
-  const [messages, setMessages] = useState([
-    {
-      sender: "bot",
-      text: `
-👋 Chào em!
+    const suggestionContainer =
+        document.getElementById("suggestions");
 
-Cô là Trợ lý AI tư vấn tâm lý học đường.
+    if (!suggestionContainer) return;
 
-Em có thể chia sẻ với cô về:
-
-📚 Học tập
-😟 Cảm xúc
-👥 Bạn bè
-🏠 Gia đình
-💕 Tình cảm
-🛡️ Bắt nạt học đường
-📱 Mạng xã hội
-🌱 Kỹ năng sống
-
-Em không cần phải kể mọi thứ ngay lập tức.
-
-Hãy bắt đầu bằng điều đang khiến em băn khoăn nhất nhé.
-`,
-    },
-  ]);
-
-  const [input, setInput] = useState("");
-
-  const [typing, setTyping] = useState(false);
-
-  const chatEndRef = useRef(null);
+    suggestionContainer.style.display = "flex";
+}
 
 
-  /* ====================================================
-     TỰ ĐỘNG CUỘN XUỐNG
-  ==================================================== */
+// ============================================================
+// 11. ẨN NÚT GỢI Ý
+// ============================================================
 
-  useEffect(() => {
+function hideSuggestions() {
 
-    chatEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
+    const suggestionContainer =
+        document.getElementById("suggestions");
 
-  }, [messages, typing]);
+    if (!suggestionContainer) return;
+
+    suggestionContainer.style.display = "none";
+}
 
 
-  /* ====================================================
-     GỬI TIN NHẮN
-  ==================================================== */
+// ============================================================
+// 12. TRẠNG THÁI NÚT GỬI
+// ============================================================
 
-  const sendMessage = (text = input) => {
+function setSendingState(state) {
 
-    const message = text.trim();
+    isWaitingForAI = state;
+
+    if (sendButton) {
+
+        sendButton.disabled = state;
+
+        if (state) {
+
+            sendButton.dataset.oldText =
+                sendButton.innerText;
+
+            sendButton.innerText =
+                "Đang gửi...";
+
+        } else {
+
+            sendButton.innerText =
+                sendButton.dataset.oldText ||
+                "Gửi";
+        }
+    }
+}
+
+
+// ============================================================
+// 13. PHÂN TÍCH TIN NHẮN HỌC SINH
+// ============================================================
+
+function analyzeMessage(message) {
+
+    try {
+
+        if (
+            typeof analyzeStudentMessage ===
+            "function"
+        ) {
+
+            return analyzeStudentMessage(message);
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Lỗi analyzeStudentMessage:",
+            error
+        );
+    }
+
+
+    // Nếu counselingRules.js chưa tải được
+    // thì vẫn cho chatbot hoạt động.
+
+    return {
+        risk: {
+            level: "GREEN",
+            reasons: []
+        },
+
+        emotion: {
+            name: "unknown"
+        },
+
+        topics: [],
+
+        primaryTopic: "general",
+
+        mode: "normal"
+    };
+}
+
+
+// ============================================================
+// 14. KIỂM TRA CÓ PHẢI TÌNH HUỐNG NGUY HIỂM KHÔNG
+// ============================================================
+
+function isHighRisk(analysis) {
+
+    if (!analysis) return false;
+
+    if (
+        analysis.risk &&
+        analysis.risk.level
+    ) {
+
+        const level =
+            String(
+                analysis.risk.level
+            ).toUpperCase();
+
+        return level === "RED" ||
+               level === "HIGH";
+    }
+
+    return false;
+}
+
+
+// ============================================================
+// 15. KIỂM TRA CÓ NÊN HIỆN GIÁO VIÊN KHÔNG
+// ============================================================
+
+function shouldContactCounselor(analysis) {
+
+    if (!analysis) return false;
+
+    if (isHighRisk(analysis)) {
+        return true;
+    }
+
+    if (
+        analysis.risk &&
+        analysis.risk.level
+    ) {
+
+        const level =
+            String(
+                analysis.risk.level
+            ).toUpperCase();
+
+        if (
+            level === "YELLOW" ||
+            level === "MEDIUM"
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+// ============================================================
+// 16. PHẢN HỒI AN TOÀN KHI CÓ NGUY CƠ CAO
+// ============================================================
+
+function getSafetyResponse() {
+
+    return `
+Mình rất tiếc vì em đang phải trải qua một cảm xúc hoặc tình huống khó khăn như vậy. 💙
+
+Điều quan trọng nhất lúc này là **em không nên phải đối mặt với chuyện này một mình**.
+
+Nếu em đang cảm thấy mình có thể làm tổn thương bản thân, đang bị đe dọa hoặc đang ở trong tình huống không an toàn:
+
+• Hãy đến gần một người lớn mà em tin tưởng ngay bây giờ.
+• Hãy nói rõ với người đó rằng em đang cần được giúp đỡ.
+• Nếu em đang ở trong tình huống nguy hiểm trước mắt, hãy tìm sự trợ giúp khẩn cấp tại nơi em đang ở.
+• Em không cần phải giải quyết tất cả mọi chuyện ngay lúc này.
+
+Cô rất muốn lắng nghe em và giúp em tìm bước tiếp theo an toàn hơn. 💙
+`;
+}
+
+
+// ============================================================
+// 17. PHẢN HỒI KHI HỌC SINH KHÔNG MUỐN NÓI
+// ============================================================
+
+function getReluctantResponse() {
+
+    return `
+Không sao đâu em. 💙
+
+Em không cần phải kể tất cả mọi chuyện ngay lập tức.
+
+Nếu khó nói thành lời, em chỉ cần cho cô biết một điều nhỏ thôi:
+
+👉 Hiện tại em đang cảm thấy **buồn, lo lắng, tức giận, cô đơn, sợ hãi hay áp lực**?
+
+Em cũng có thể chỉ cần nói:
+“Em đang rất mệt.”
+
+Mình có thể bắt đầu từ đó.
+`;
+}
+
+
+// ============================================================
+// 18. PHẢN HỒI CƠ BẢN KHI CHƯA KẾT NỐI ĐƯỢC AI
+// ============================================================
+
+function getFallbackResponse(message, analysis) {
+
+    const topic =
+        analysis &&
+        analysis.primaryTopic
+            ? analysis.primaryTopic
+            : "general";
+
+
+    switch (topic) {
+
+        case "study":
+
+            return `
+Cô hiểu rằng chuyện học tập đôi khi có thể khiến em rất áp lực. 💙
+
+Em không cần phải giải quyết tất cả cùng một lúc.
+
+Em có thể thử chia việc học thành những phần nhỏ hơn và ưu tiên một việc quan trọng nhất trước.
+
+Nếu em muốn, em có thể kể cho cô biết:
+
+👉 Điều gì trong chuyện học tập đang khiến em áp lực nhất?
+`;
+
+
+        case "friendship":
+
+            return `
+Các mối quan hệ bạn bè ở tuổi học sinh đôi khi có thể khiến mình vui nhưng cũng có lúc rất buồn.
+
+Em có thể kể cho cô nghe chuyện gì đã xảy ra với bạn của em không?
+
+Cô sẽ lắng nghe mà không vội phán xét em. 💙
+`;
+
+
+        case "bullying":
+
+            return `
+Nếu em đang bị trêu chọc, xúc phạm, cô lập hoặc bắt nạt, trước hết em cần biết rằng em không phải tự chịu đựng chuyện đó một mình.
+
+Em hãy tìm một người lớn mà em tin tưởng để chia sẻ.
+
+Nếu chuyện xảy ra trên mạng, em cũng nên lưu lại những bằng chứng phù hợp và không trả đũa bằng cách làm tổn thương người khác.
+
+Em có thể kể cho cô biết chuyện đó xảy ra ở trường hay trên mạng không?
+`;
+
+
+        case "family":
+
+            return `
+Chuyện trong gia đình đôi khi rất khó nói vì mình vừa yêu thương người thân vừa có thể cảm thấy tổn thương hoặc không được hiểu.
+
+Em không cần phải chọn ngay ai đúng hay ai sai.
+
+Em có thể kể cho cô điều gì đã xảy ra và điều gì khiến em buồn nhất không?
+`;
+
+
+        case "anxiety":
+
+            return `
+Cô hiểu cảm giác lo lắng có thể khiến mình rất mệt mỏi.
+
+Trước mắt, em thử hít vào chậm, thở ra chậm vài lần và cho bản thân một chút thời gian.
+
+Sau đó em có thể nói cho cô biết:
+
+👉 Em đang lo lắng về chuyện gì nhất?
+`;
+
+
+        case "love":
+
+            return `
+Những cảm xúc đặc biệt dành cho một người ở tuổi học sinh là điều có thể xảy ra và em không cần phải xấu hổ vì cảm xúc của mình. 💙
+
+Điều quan trọng là hai người cần tôn trọng nhau, không ép buộc nhau và biết giữ những ranh giới riêng tư.
+
+Em đang gặp khó khăn ở chuyện gì trong mối quan hệ này?
+`;
+
+
+        case "sleep":
+
+            return `
+Giấc ngủ có ảnh hưởng khá lớn đến tâm trạng và khả năng học tập.
+
+Em có thể thử hạn chế sử dụng điện thoại trước khi ngủ, giữ giờ ngủ tương đối ổn định và tạo một không gian yên tĩnh để nghỉ ngơi.
+
+Nếu tình trạng mất ngủ kéo dài hoặc ảnh hưởng nhiều đến cuộc sống, em nên chia sẻ với người lớn mà em tin tưởng.
+
+Em thường khó ngủ vì suy nghĩ về điều gì?
+`;
+
+
+        case "selfEsteem":
+
+            return `
+Có những lúc chúng ta cảm thấy mình không đủ tốt, nhưng một cảm giác như vậy không có nghĩa rằng em thật sự không có giá trị.
+
+Em thử nghĩ về một điều nhỏ mà em đã cố gắng làm tốt gần đây.
+
+Nếu muốn, em hãy kể cho cô biết điều gì khiến em cảm thấy mình chưa đủ tốt.
+`;
+
+
+        case "puberty":
+
+            return `
+Tuổi dậy thì có thể đem đến rất nhiều thay đổi về cơ thể, cảm xúc và suy nghĩ.
+
+Những thay đổi đó có thể khiến em tò mò, bối rối hoặc lo lắng.
+
+Em có thể hỏi cô điều em đang thắc mắc. Cô sẽ cố gắng giải thích bằng cách phù hợp với lứa tuổi và an toàn.
+`;
+
+
+        case "socialMedia":
+
+            return `
+Mạng xã hội có thể giúp chúng ta kết nối với mọi người nhưng đôi khi cũng tạo ra áp lực.
+
+Em không cần phải so sánh mình với những hình ảnh hoặc cuộc sống mà người khác đăng trên mạng.
+
+Nếu có ai làm em khó chịu trên mạng, em có thể chặn, báo cáo và nói với người lớn mà em tin tưởng.
+
+Chuyện gì trên mạng đang khiến em khó chịu?
+`;
+
+
+        default:
+
+            return `
+Cô đang lắng nghe em. 💙
+
+Em có thể kể cho cô thêm một chút về điều đang khiến em suy nghĩ hoặc khó chịu.
+
+Em không cần phải viết thật dài.
+
+Chỉ cần bắt đầu bằng:
+
+👉 “Điều làm em buồn là...”
+
+hoặc
+
+👉 “Điều em đang lo là...”
+`;
+    }
+}
+
+
+// ============================================================
+// 19. GỬI TIN NHẮN ĐẾN AI
+// ============================================================
+
+async function askAI(message, analysis) {
+
+    try {
+
+        const response =
+            await fetch("/api/chat", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    message: message,
+
+                    analysis: analysis,
+
+                    history:
+                        conversationHistory
+                            .slice(-10)
+                })
+            });
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "API trả về lỗi: " +
+                response.status
+            );
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (!data.reply) {
+
+            throw new Error(
+                "API không trả về nội dung."
+            );
+        }
+
+
+        return data;
+
+
+    } catch (error) {
+
+        console.error(
+            "Lỗi kết nối AI:",
+            error
+        );
+
+        return {
+            success: false,
+            reply: null,
+            showCounselor:
+                shouldContactCounselor(
+                    analysis
+                )
+        };
+    }
+}
+
+
+// ============================================================
+// 20. HÀM XỬ LÝ TIN NHẮN CHÍNH
+// ============================================================
+
+async function generateResponse(message) {
 
     if (!message) return;
 
-    setMessages((prev) => [
-      ...prev,
 
-      {
-        sender: "user",
-        text: message,
-      },
-    ]);
+    message =
+        String(message).trim();
 
-    setInput("");
 
-    setTyping(true);
+    if (!message) return;
 
 
-    setTimeout(() => {
+    // ------------------------------------------
+    // Phân tích tin nhắn
+    // ------------------------------------------
 
-      const response = generateResponse(message);
+    const analysis =
+        analyzeMessage(message);
 
-      setMessages((prev) => [
-        ...prev,
 
-        {
-          sender: "bot",
-          text: response.message,
-          risk: response.type,
-        },
-      ]);
+    console.log(
+        "Phân tích học sinh:",
+        analysis
+    );
 
-      setTyping(false);
 
-    }, 700);
-  };
+    // ------------------------------------------
+    // Nếu là nguy cơ cao
+    // ------------------------------------------
 
+    if (isHighRisk(analysis)) {
 
-  /* ====================================================
-     GỢI Ý NHANH
-  ==================================================== */
+        addMessage(
+            getSafetyResponse(),
+            "bot"
+        );
 
-  const quickTopics = [
+        showCounselor();
 
-    {
-      icon: "😟",
-      label: "Em đang buồn",
-      text: "Em đang cảm thấy rất buồn và không biết phải làm gì.",
-    },
+        return;
+    }
 
-    {
-      icon: "📚",
-      label: "Áp lực học tập",
-      text: "Em đang cảm thấy rất áp lực về việc học và điểm số.",
-    },
 
-    {
-      icon: "👥",
-      label: "Vấn đề bạn bè",
-      text: "Em đang có vấn đề với bạn bè và không biết giải quyết thế nào.",
-    },
+    // ------------------------------------------
+    // Nếu học sinh không muốn nói
+    // ------------------------------------------
 
-    {
-      icon: "🏠",
-      label: "Gia đình",
-      text: "Em đang gặp khó khăn khi nói chuyện với bố mẹ.",
-    },
+    const lowerMessage =
+        message.toLowerCase();
 
-    {
-      icon: "💕",
-      label: "Tình cảm",
-      text: "Em đang có một vấn đề về tình cảm và muốn được chia sẻ.",
-    },
 
-    {
-      icon: "🛡️",
-      label: "Bị bắt nạt",
-      text: "Em đang bị các bạn bắt nạt và em không biết phải làm gì.",
-    },
+    if (
+        lowerMessage.includes(
+            "không muốn nói"
+        ) ||
+        lowerMessage.includes(
+            "không muốn kể"
+        ) ||
+        lowerMessage.includes(
+            "không biết nói gì"
+        )
+    ) {
 
-    {
-      icon: "📱",
-      label: "Mạng xã hội",
-      text: "Mạng xã hội đang khiến em cảm thấy áp lực.",
-    },
+        addMessage(
+            getReluctantResponse(),
+            "bot"
+        );
 
-    {
-      icon: "🌱",
-      label: "Kỹ năng sống",
-      text: "Em muốn được hướng dẫn cách tự tin và quản lý cảm xúc tốt hơn.",
-    },
+        showCounselor();
 
-  ];
+        return;
+    }
 
 
-  /* ====================================================
-     NÚT KHẨN CẤP
-  ==================================================== */
+    // ------------------------------------------
+    // Nếu chưa có API
+    // ------------------------------------------
 
-  const emergency = () => {
+    showTyping();
 
-    const response = highRiskResponse();
 
-    setMessages((prev) => [
+    const result =
+        await askAI(
+            message,
+            analysis
+        );
 
-      ...prev,
 
-      {
-        sender: "user",
-        text: "🆘 Em cần được giúp đỡ ngay.",
-      },
+    removeTyping();
 
-      {
-        sender: "bot",
-        text: response.message,
-        risk: "HIGH",
-      },
 
-    ]);
+    // ------------------------------------------
+    // Nếu AI trả lời thành công
+    // ------------------------------------------
 
-  };
+    if (
+        result &&
+        result.reply
+    ) {
 
+        addMessage(
+            result.reply,
+            "bot"
+        );
 
-  return (
 
-    <div className="app">
+        // Lưu lịch sử
+        conversationHistory.push({
 
-      {/* HEADER */}
+            role: "user",
 
-      <header className="header">
+            content: message
 
-        <div className="logo">
-          🧠
-        </div>
+        });
 
-        <div>
 
-          <h1>
-            Trợ lý AI Tư vấn Tâm lý Học đường
-          </h1>
+        conversationHistory.push({
 
-          <p>
-            Luôn lắng nghe • Không phán xét • Đồng hành cùng em
-          </p>
+            role: "assistant",
 
-        </div>
+            content: result.reply
 
-      </header>
+        });
 
 
-      {/* CHAT */}
+        // Chỉ giữ 20 tin nhắn gần nhất
+        if (
+            conversationHistory.length > 20
+        ) {
 
-      <main className="chat-container">
+            conversationHistory =
+                conversationHistory.slice(-20);
+        }
 
-        <div className="chat-box">
 
-          {messages.map((message, index) => (
+        // Hiển thị giáo viên nếu cần
+        if (
+            result.showCounselor === true ||
+            shouldContactCounselor(analysis)
+        ) {
 
-            <div
-              key={index}
-              className={
-                message.sender === "user"
-                  ? "message user-message"
-                  : "message bot-message"
-              }
-            >
+            showCounselor();
+        }
 
-              <div className="avatar">
 
-                {message.sender === "user"
-                  ? "👧"
-                  : "🧠"}
+        return;
+    }
 
-              </div>
 
-              <div className="bubble">
+    // ------------------------------------------
+    // Nếu API chưa hoạt động
+    // ------------------------------------------
 
-                <div className="message-text">
-                  {message.text}
-                </div>
+    const fallback =
+        getFallbackResponse(
+            message,
+            analysis
+        );
 
-                {message.sender === "bot" &&
-                  message.risk === "HIGH" && (
 
-                    <CounselorCard />
+    addMessage(
+        fallback,
+        "bot"
+    );
 
-                  )}
 
-              </div>
+    if (
+        shouldContactCounselor(
+            analysis
+        )
+    ) {
 
-            </div>
+        showCounselor();
+    }
+}
 
-          ))}
 
+// ============================================================
+// 21. HÀM GỬI TIN NHẮN
+// ============================================================
 
-          {/* TYPING */}
+async function sendMessage() {
 
-          {typing && (
+    if (isWaitingForAI) return;
 
-            <div className="message bot-message">
 
-              <div className="avatar">
-                🧠
-              </div>
+    if (!messageInput) {
 
-              <div className="bubble typing">
-                Cô đang suy nghĩ...
-              </div>
+        console.error(
+            "Không tìm thấy ô nhập tin nhắn."
+        );
 
-            </div>
+        return;
+    }
 
-          )}
 
-          <div ref={chatEndRef} />
+    const message =
+        messageInput.value.trim();
 
-        </div>
 
+    if (!message) return;
 
-        {/* GỢI Ý */}
 
-        <div className="quick-section">
+    // Hiện tin nhắn học sinh
+    addMessage(
+        message,
+        "user"
+    );
 
-          <div className="quick-title">
-            Em muốn chia sẻ về:
-          </div>
 
-          <div className="quick-grid">
+    // Xóa ô nhập
+    messageInput.value = "";
 
-            {quickTopics.map((item, index) => (
 
-              <button
-                key={index}
-                className="quick-button"
-                onClick={() => sendMessage(item.text)}
-              >
+    // Ẩn gợi ý
+    hideSuggestions();
 
-                <span>
-                  {item.icon}
-                </span>
 
-                <span>
-                  {item.label}
-                </span>
+    // Gửi AI
+    setSendingState(true);
 
-              </button>
 
-            ))}
+    try {
 
-          </div>
+        await generateResponse(
+            message
+        );
 
-        </div>
+    } catch (error) {
 
+        console.error(error);
 
-        {/* KHẨN CẤP */}
+        removeTyping();
 
-        <button
-          className="emergency-button"
-          onClick={emergency}
-        >
-          🆘 Em cần được giúp đỡ ngay
-        </button>
+        addMessage(
+            `
+Xin lỗi em, hiện tại trợ lý đang gặp một chút sự cố.
 
+Em có thể thử gửi lại tin nhắn sau ít phút.
 
-        {/* INPUT */}
+Nếu em đang gặp một vấn đề khiến em cảm thấy không an toàn, hãy tìm ngay một người lớn mà em tin tưởng để được hỗ trợ.
+            `,
+            "bot"
+        );
 
-        <div className="input-area">
+        showCounselor();
 
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
+    } finally {
 
-              if (
-                e.key === "Enter" &&
-                !e.shiftKey
-              ) {
+        setSendingState(false);
+    }
+}
 
-                e.preventDefault();
+
+// ============================================================
+// 22. NÚT GỬI
+// ============================================================
+
+if (sendButton) {
+
+    sendButton.addEventListener(
+        "click",
+        sendMessage
+    );
+}
+
+
+// ============================================================
+// 23. NHẤN ENTER ĐỂ GỬI
+// ============================================================
+
+if (messageInput) {
+
+    messageInput.addEventListener(
+        "keydown",
+        function(event) {
+
+            if (
+                event.key === "Enter" &&
+                !event.shiftKey
+            ) {
+
+                event.preventDefault();
 
                 sendMessage();
-
-              }
-
-            }}
-            placeholder="Em hãy viết điều em muốn chia sẻ..."
-          />
-
-          <button
-            className="send-button"
-            onClick={() => sendMessage()}
-          >
-            ➤
-          </button>
-
-        </div>
-
-
-        {/* THÔNG TIN */}
-
-        <div className="privacy-note">
-
-          🔒 Em không cần cung cấp mật khẩu,
-          thông tin tài khoản hoặc những thông tin
-          cá nhân không cần thiết.
-
-        </div>
-
-      </main>
-
-    </div>
-
-  );
+            }
+        }
+    );
 }
+
+
+// ============================================================
+// 24. CÁC NÚT GỢI Ý
+// ============================================================
+
+suggestionButtons.forEach(
+    function(button) {
+
+        button.addEventListener(
+            "click",
+            function() {
+
+                const text =
+                    button.dataset.message ||
+                    button.innerText.trim();
+
+
+                if (!text) return;
+
+
+                if (messageInput) {
+
+                    messageInput.value =
+                        text;
+                }
+
+
+                sendMessage();
+            }
+        );
+    }
+);
+
+
+// ============================================================
+// 25. CHÀO HỌC SINH KHI MỞ CHATBOT
+// ============================================================
+
+function showWelcomeMessage() {
+
+    if (!chatBox) return;
+
+
+    // Không hiển thị lại nếu đã có tin nhắn
+    if (
+        chatBox.children.length > 0
+    ) {
+        return;
+    }
+
+
+    const welcome = `
+Chào em! 👋💙
+
+Cô là **Trợ lý AI Tư vấn Tâm lý Học đường**.
+
+Em có thể chia sẻ với cô về:
+
+• 📚 Chuyện học tập và áp lực học tập
+• 👭 Bạn bè và các mối quan hệ
+• 🏫 Chuyện ở trường
+• 😔 Buồn, lo lắng, căng thẳng
+• 👨‍👩‍👧 Chuyện gia đình
+• 💕 Những cảm xúc tuổi mới lớn
+• 📱 Mạng xã hội
+• 😴 Giấc ngủ
+• 💪 Sự tự tin và cách quản lý cảm xúc
+
+Em không cần phải viết thật dài.
+
+Chỉ cần nói điều em đang nghĩ hoặc đang cảm thấy.
+
+**Cô sẽ lắng nghe em. 💙**
+`;
+
+
+    addMessage(
+        welcome,
+        "bot"
+    );
+}
+
+
+// ============================================================
+// 26. KHỞI ĐỘNG CHATBOT
+// ============================================================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        showWelcomeMessage();
+
+        console.log(
+            "✅ Chatbot tư vấn tâm lý đã khởi động."
+        );
+
+        console.log(
+            "📚 Knowledge Base:",
+            typeof KNOWLEDGE_BASE !==
+            "undefined"
+                ? "Đã tải"
+                : "Chưa tải"
+        );
+
+        console.log(
+            "🧠 Counseling Rules:",
+            typeof analyzeStudentMessage ===
+            "function"
+                ? "Đã tải"
+                : "Chưa tải"
+        );
+
+    }
+);
+
+
+// ============================================================
+// 27. CHO PHÉP GỌI generateResponse TỪ BÊN NGOÀI
+// ============================================================
+
+window.generateResponse =
+    generateResponse;
+
+
+window.sendMessage =
+    sendMessage;
+
+
+window.showCounselor =
+    showCounselor;
+
+
+// ============================================================
+// KẾT THÚC FILE app.js
+// ============================================================
