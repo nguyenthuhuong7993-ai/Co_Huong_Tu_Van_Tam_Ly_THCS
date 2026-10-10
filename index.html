@@ -309,5 +309,93 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 </script>
+  
+<!-- BỘ CÔNG CỤ GIẢI MÃ CẢM XÚC -->
+<section id="emotionTool" class="emotion-tool">
+  <div class="emotion-header">
+    <span class="emotion-icon">💗</span>
+    <h2>Giải mã cảm xúc cùng Cô Hường</h2>
+    <p>Hiểu cảm xúc của mình, tìm cách chăm sóc bản thân.</p>
+  </div>
+
+  <div class="emotion-card">
+    <h3>1. Hôm nay em cảm thấy thế nào?</h3>
+    <p>Hãy chọn cảm xúc gần với trạng thái của em nhất.</p>
+
+    <div class="emotion-grid">
+      <button type="button" class="emotion-choice" data-emotion="Vui vẻ">😊<span>Vui vẻ</span></button>
+      <button type="button" class="emotion-choice" data-emotion="Buồn bã">😢<span>Buồn bã</span></button>
+      <button type="button" class="emotion-choice" data-emotion="Lo lắng">😟<span>Lo lắng</span></button>
+      <button type="button" class="emotion-choice" data-emotion="Tức giận">😠<span>Tức giận</span></button>
+      <button type="button" class="emotion-choice" data-emotion="Bối rối">😕<span>Bối rối</span></button>
+      <button type="button" class="emotion-choice" data-emotion="Cô đơn">🥺<span>Cô đơn</span></button>
+      <button type="button" class="emotion-choice" data-emotion="Thất vọng">😞<span>Thất vọng</span></button>
+      <button type="button" class="emotion-choice" data-emotion="Bình tĩnh">😌<span>Bình tĩnh</span></button>
+    </div>
+
+    <p id="selectedEmotion" class="emotion-status" aria-live="polite">
+      Em chưa chọn cảm xúc.
+    </p>
+  </div>
+
+  <div class="emotion-card">
+    <h3>2. Cảm xúc mạnh đến mức nào?</h3>
+    <div class="emotion-level">
+      <label for="emotionLevel">Mức độ: <strong id="levelValue">3/5</strong></label>
+      <input id="emotionLevel" type="range" min="1" max="5" value="3">
+      <div class="level-labels">
+        <span>Nhẹ nhàng</span>
+        <span>Rất mạnh</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="emotion-card">
+    <h3>3. Điều gì có thể khiến em cảm thấy như vậy?</h3>
+    <select id="emotionCause">
+      <option value="">-- Chọn tình huống --</option>
+      <option value="Học tập và kiểm tra">Học tập, kiểm tra</option>
+      <option value="Gia đình">Gia đình</option>
+      <option value="Bạn bè">Bạn bè</option>
+      <option value="Mạng xã hội">Mạng xã hội</option>
+      <option value="Thầy cô">Thầy cô</option>
+      <option value="Chưa rõ nguyên nhân">Em chưa rõ nguyên nhân</option>
+      <option value="Khác">Một chuyện khác</option>
+    </select>
+  </div>
+
+  <div class="emotion-card">
+    <h3>4. Em mong muốn điều gì lúc này?</h3>
+    <select id="emotionNeed">
+      <option value="">-- Chọn điều em cần --</option>
+      <option value="Bình tĩnh hơn">Muốn bình tĩnh hơn</option>
+      <option value="Hiểu cảm xúc">Muốn hiểu cảm xúc của mình</option>
+      <option value="Giải quyết vấn đề">Muốn tìm cách giải quyết vấn đề</option>
+      <option value="Được lắng nghe">Muốn có người lắng nghe</option>
+      <option value="Chưa biết mình cần gì">Em chưa biết mình cần gì</option>
+    </select>
+  </div>
+
+  <div class="emotion-card">
+    <h3>5. Em muốn chia sẻ thêm không?</h3>
+    <textarea id="emotionNote" rows="3"
+      placeholder="Em có thể viết điều mình đang nghĩ hoặc cảm nhận..."></textarea>
+    <p class="emotion-privacy">
+      Em không cần ghi họ tên, địa chỉ hoặc thông tin riêng tư.
+      Nội dung ở bước này chưa được lưu vào hệ thống.
+    </p>
+  </div>
+
+  <button type="button" id="decodeEmotionBtn" class="decode-button">
+    💗 Giúp em hiểu cảm xúc
+  </button>
+
+  <div id="emotionResult" class="emotion-result"
+       aria-live="polite" hidden></div>
+
+  <button type="button" id="resetEmotionBtn" class="reset-button">
+    Làm lại
+  </button>
+</section>
 </body>
 </html>
